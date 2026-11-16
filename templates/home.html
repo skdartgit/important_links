@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Important Links | Home{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <span class="eyebrow">YOUR PERSONAL COLLECTION</span>
+    <h1>Important Websites</h1>
+    <p>All your essential websites, neatly organised in one place.</p>
+</section>
+
+{% if links %}
+    <div class="link-list">
+        {% for link in links %}
+        <article class="link-card">
+            <div class="link-number">{{ "%02d"|format(loop.index) }}</div>
+
+            <div class="link-details">
+                <section class="detail-section">
+                    <span class="detail-label">WEBSITE NAME</span>
+                    <h2>{{ link.website_name }}</h2>
+                </section>
+
+                <section class="detail-section">
+                    <span class="detail-label">PURPOSE</span>
+                    <p>{{ link.purpose }}</p>
+                </section>
+
+                <section class="detail-section website-link-section">
+                    <span class="detail-label">WEBSITE LINK</span>
+                    <a class="website-link"
+                       href="{{ link.website_url }}"
+                       target="_blank"
+                       rel="noopener noreferrer">
+                        {{ link.website_url }}
+                        <span aria-hidden="true">↗</span>
+                    </a>
+                </section>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+{% else %}
+    <section class="empty-state">
+        <div class="empty-icon">✦</div>
+        <h2>Your collection starts here</h2>
+        <p>No websites have been added yet.</p>
+        <p>Log in through Admin Login to add your important websites.</p>
+    </section>
+{% endif %}
+{% endblock %}

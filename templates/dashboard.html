@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}Manage Links | Important Links{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<section class="page-heading admin-heading">
+    <span class="eyebrow">ADMINISTRATION PANEL</span>
+    <h1>Manage Your Links</h1>
+    <p>Add, edit, delete and arrange your important websites.</p>
+
+    <div class="dashboard-actions">
+        <a href="{{ url_for('add_link') }}" class="btn btn-primary">
+            <span>＋</span> Add New Website
+        </a>
+        <a href="{{ url_for('settings') }}" class="btn btn-outline">
+            ⚙ Admin Settings
+        </a>
+    </div>
+</section>
+
+<div class="manage-toolbar">
+    <span><strong>{{ links|length }}</strong> saved websites</span>
+    {% if links %}
+    <span class="drag-hint">☝ Long press and drag to rearrange</span>
+    {% endif %}
+</div>
+
+{% if links %}
+<div id="sortable-links" class="link-list admin-link-list"
+     data-csrf="{{ csrf_token() }}">
+    {% for link in links %}
+    <article class="link-card admin-link-card" data-id="{{ link.id }}">
+        <div class="drag-handle" title="Drag to reorder">⠿</div>
+        <div class="link-number">{{ "%02d"|format(loop.index) }}</div>
+
+        <div class="link-details">
+            <section class="detail-section">
+                <span class="detail-label">WEBSITE NAME</span>
+                <h2>{{ link.website_name }}</h2>
+            </section>
+            <section class="detail-section">
+                <span class="detail-label">PURPOSE</span>
+                <p>{{ link.purpose }}</p>
+            </section>
+            <section class="detail-section">
+                <span class="detail-label">WEBSITE LINK</span>
+                <a class="website-link" href="{{ link.website_url }}"
+                   target="_blank" rel="noopener noreferrer">
+                    {{ link.website_url }} <span>↗</span>
+                </a>
+            </section>
+
+            <div class="card-actions">
+                <a class="btn btn-edit"
+                   href="{{ url_for('edit_link', link_id=link.id) }}">✎ Edit</a>
+
+                <form method="POST"
+                      action="{{ url_for('delete_link', link_id=link.id) }}"
+                      class="inline-form delete-form">
+                    <input type="hidden" name="csrf_token"
+                           value="{{ csrf_token() }}">
+                    <button class="btn btn-delete" type="submit">⌫ Delete</button>
+                </form>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% else %}
+<section class="empty-state">
+    <div class="empty-icon">✦</div>
+    <h2>No websites saved yet</h2>
+    <p>Add your first important website to get started.</p>
+    <a href="{{ url_for('add_link') }}" class="btn btn-primary">Add First Website</a>
+</section>
+{% endif %}
+
+<div class="dashboard-bottom">
+    <form method="POST" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline">Log Out</button>
+    </form>
+</div>
+
+<div id="sort-status" class="sort-status" role="status" aria-live="polite"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const list = document.getElementById("sortable-links");
+    if (!list) return;
+
+    if (typeof Sortable === "undefined") {
+        document.getElementById("sort-status").textContent =
+            "Drag sorting requires an internet connection to load its library.";
+        return;
+    }
+
+    const sortable = new Sortable(list, {
+        animation: 220,
+        handle: ".drag-handle",
+        draggable: ".admin-link-card",
+        delay: 350,
+        delayOnTouchOnly: true,
+        touchStartThreshold: 5,
+        ghostClass: "sortable-ghost",
+        chosenClass: "sortable-chosen",
+
+        onEnd: async function () {
+            const ids = Array.from(
+                list.querySelectorAll(".admin-link-card")
+            ).map(card => Number(card.dataset.id));
+
+            const status = document.getElementById("sort-status");
+            status.textContent = "Saving new order...";
+
+            try {
+                const response = await fetch("{{ url_for('reorder_links') }}", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        ids: ids,
+                        csrf_token: list.dataset.csrf
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || "Unable to save order.");
+                }
+
+                status.textContent = "✓ New order saved successfully.";
+                list.querySelectorAll(".link-number").forEach((el, index) => {
+                    el.textContent = String(index + 1).padStart(2, "0");
+                });
+            } catch (error) {
+                status.textContent = "Could not save order. Refreshing...";
+                setTimeout(() => location.reload(), 1000);
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
